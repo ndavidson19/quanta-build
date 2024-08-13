@@ -1,0 +1,25 @@
+environment: staging
+domain: staging.quanta.com
+replicas: 1
+resources:
+  cpu: 0.5
+  memory: 512Mi
+
+feature_flags:
+  new_feature: true
+  beta_feature: true
+
+deployment:
+  strategy: rolling
+
+monitoring:
+  prometheus:
+    retention_days: 7
+  grafana:
+    public_access: true
+
+scaling:
+  auto_scaling: true
+  min_replicas: 1
+  max_replicas: 5
+  cpu_threshold: 80

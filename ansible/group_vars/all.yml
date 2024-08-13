@@ -1,0 +1,21 @@
+---
+eks_cluster_name: "quanta-cluster"
+kubeconfig_path: "~/.kube/config"
+namespaces:
+  - staging
+  - production
+
+app_name: "quanta-app"
+image_name: "your-docker-registry/quanta-app"
+image_tag: "latest"
+container_port: 8080
+service_port: 80
+replicas: 2
+
+ingress_host: "quanta.example.com"
+
+helm_repos:
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts

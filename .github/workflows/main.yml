@@ -1,0 +1,79 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Build Docker images
+      run: ./scripts/build.sh
+
+    - name: Run tests
+      run: ./scripts/test.sh
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: terraform/aws
+
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
+      working-directory: terraform/aws
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve tfplan
+      working-directory: terraform/aws
+
+    - name: Setup Ansible
+      uses: ansible/ansible-base-action@v1
+
+    - name: Install Ansible dependencies
+      run: |
+        ansible-galaxy collection install community.kubernetes
+        ansible-galaxy collection install community.general
+
+    - name: Run Ansible playbook
+      run: ansible-playbook ansible/configure_eks.yml
+      env:
+        KUBECONFIG: ${{ secrets.KUBECONFIG }}
+        EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    - name: Deploy to staging
+      run: ./scripts/deploy.sh staging
+      env:
+        KUBECONFIG: ${{ secrets.KUBECONFIG }}
+
+    - name: Deploy to production
+      run: ./scripts/deploy.sh production
+      env:
+        KUBECONFIG: ${{ secrets.KUBECONFIG }}

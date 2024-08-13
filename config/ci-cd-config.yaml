@@ -1,0 +1,50 @@
+microservices:
+  - name: service1
+    repo: git@github.com:your-org/service1.git
+    docker_compose: docker-compose.yml
+    makefile: Makefile
+    image: your-registry/service1
+  - name: service2
+    repo: git@github.com:your-org/service2.git
+    docker_compose: docker-compose.yml
+    makefile: Makefile
+    image: your-registry/service2
+
+environments:
+  - name: staging
+    domain: staging.quanta.com
+    replicas: 1
+    resources:
+      cpu: 0.5
+      memory: 512Mi
+  - name: production
+    domain: quanta.com
+    replicas: 3
+    resources:
+      cpu: 1
+      memory: 1Gi
+
+feature_flags:
+  - name: new_feature
+    default: false
+  - name: beta_feature
+    default: true
+
+deployment:
+  strategies:
+    - rolling
+    - blue-green
+    - canary
+  default_strategy: rolling
+
+monitoring:
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+
+scaling:
+  auto_scaling: true
+  min_replicas: 1
+  max_replicas: 10
+  cpu_threshold: 70

@@ -1,0 +1,50 @@
+---
+- name: Update kubeconfig
+  shell: >
+    aws eks get-token --cluster-name {{ eks_cluster_name }} | 
+    kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+- name: Create namespaces
+  k8s:
+    name: "{{ item }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+  loop: "{{ namespaces }}"
+
+- name: Apply Kubernetes configurations
+  k8s:
+    definition: "{{ lookup('template', item) }}"
+    state: present
+  loop:
+    - k8s-deployment.yaml.j2
+    - k8s-service.yaml.j2
+    - k8s-ingress.yaml.j2
+
+- name: Install Helm
+  shell: |
+    curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Add Helm repositories
+  helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+  loop: "{{ helm_repos }}"
+
+- name: Install Ingress Controller
+  helm:
+    name: ingress-nginx
+    chart_ref: ingress-nginx/ingress-nginx
+    release_namespace: ingress-nginx
+    create_namespace: true
+
+- name: Install Prometheus and Grafana
+  helm:
+    name: monitoring
+    chart_ref: prometheus-community/kube-prometheus-stack
+    release_namespace: monitoring
+    create_namespace: true
